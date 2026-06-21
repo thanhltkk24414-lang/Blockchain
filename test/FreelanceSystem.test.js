@@ -412,13 +412,95 @@ describe("FreelanceSystem", function () {
 
       await expect(
         escrow.connect(outsider).setPaused(true)
-      ).to.be.revertedWithCustomError(escrow, "OnlyAdmin");
+      ).to.be.revertedWithCustomError(escrow, "Unauthorized");
     });
 
     it("allows new admin to pause escrow after transfer", async function () {
       await escrow.connect(admin).transferAdmin(outsider.address);
       await escrow.connect(outsider).setPaused(true);
       expect(await escrow.paused()).to.equal(true);
+    });
+  });
+
+  describe("Delegated roles", function () {
+    const ROLE_PAUSER = 1n;
+    const ROLE_FORCE_RESOLVER = 2n;
+    const ROLE_ARBITRATOR_MANAGER = 1n;
+
+    it("grants pauser without full admin and revokes access", async function () {
+      await escrow.connect(admin).grantRole(outsider.address, ROLE_PAUSER);
+      expect(await escrow.hasRole(outsider.address, ROLE_PAUSER)).to.equal(true);
+
+      await escrow.connect(outsider).setPaused(true);
+      expect(await escrow.paused()).to.equal(true);
+
+      await escrow.connect(admin).revokeRole(outsider.address, ROLE_PAUSER);
+      await expect(
+        escrow.connect(outsider).setPaused(false)
+      ).to.be.revertedWithCustomError(escrow, "Unauthorized");
+    });
+
+    it("blocks delegated pauser from transferAdmin and grantRole", async function () {
+      await escrow.connect(admin).grantRole(outsider.address, ROLE_PAUSER);
+
+      await expect(
+        escrow.connect(outsider).transferAdmin(outsider.address)
+      ).to.be.revertedWithCustomError(escrow, "OnlyAdmin");
+
+      await expect(
+        escrow.connect(outsider).grantRole(outsider.address, ROLE_PAUSER)
+      ).to.be.revertedWithCustomError(escrow, "OnlyAdmin");
+    });
+
+    it("allows arbitrator manager to joinPool for others", async function () {
+      await usdc.connect(arb1).approve(await treasury.getAddress(), USDC(50));
+      await treasury.connect(arb1).stakeAsArbitrator(USDC(50));
+
+      await panel.connect(admin).grantRole(outsider.address, ROLE_ARBITRATOR_MANAGER);
+      await expect(panel.connect(outsider).joinPool(arb1.address)).to.emit(
+        panel,
+        "ArbitratorJoined"
+      );
+      expect(await panel.isInPool(arb1.address)).to.equal(true);
+    });
+
+    it("blocks non-manager from joining pool on behalf of others", async function () {
+      await usdc.connect(arb1).approve(await treasury.getAddress(), USDC(50));
+      await treasury.connect(arb1).stakeAsArbitrator(USDC(50));
+
+      await expect(panel.connect(outsider).joinPool(arb1.address)).to.be.revertedWithCustomError(
+        panel,
+        "Unauthorized"
+      );
+    });
+
+    it("allows force resolver role without pauser privileges", async function () {
+      await createOpenJob(USDC(500));
+      await depositAndAssign();
+      await escrow.connect(freelancer).startWork(1);
+      await escrow.connect(freelancer).submitWork(1, "QmX");
+      await setupArbitratorPool();
+
+      const fee = BPS(USDC(500), 2);
+      await usdc.connect(client).approve(await escrow.getAddress(), fee);
+      await escrow.connect(client).raiseDispute(1);
+
+      await escrow.connect(admin).grantRole(outsider.address, ROLE_FORCE_RESOLVER);
+
+      await expect(
+        escrow.connect(outsider).setPaused(true)
+      ).to.be.revertedWithCustomError(escrow, "Unauthorized");
+
+      // Quorum fail path — adminForceResolve still callable by force resolver
+      const createdAt = (await panel.disputes(1)).createdAt;
+      await time.increaseTo(Number(createdAt) + 168 * 3600 + 1);
+      await expect(escrow.finalizeDisputeVoting(1)).to.be.revertedWithCustomError(
+        panel,
+        "InsufficientQuorum"
+      );
+
+      await escrow.connect(outsider).adminForceResolve(1, 1); // FREELANCER_WIN
+      expect((await registry.getJob(1)).status).to.equal(5); // COMPLETED
     });
   });
 });

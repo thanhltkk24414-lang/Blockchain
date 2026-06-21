@@ -71,6 +71,10 @@ async function main() {
   console.log("Authorization wired between contracts");
   console.log("Admin (all contracts):", deployer.address);
   console.log("Use transferAdmin() on each contract to rotate platform admin");
+  console.log(
+    "Optional delegated roles: EscrowVault.grantRole(addr, ROLE_PAUSER|ROLE_FORCE_RESOLVER),",
+    "ArbitratorPanel.grantRole(addr, ROLE_ARBITRATOR_MANAGER)"
+  );
 
   const deployment = {
     network,
