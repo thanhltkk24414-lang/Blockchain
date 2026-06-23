@@ -1,5 +1,6 @@
 {
-  "name": "blockchain-freelance-dapp",
+  "name": "fapex",
+  "description": "Fapex — Web3 Freelance Platform (Hardhat contracts monorepo root)",
   "version": "1.0.1",
   "private": true,
   "scripts": {
