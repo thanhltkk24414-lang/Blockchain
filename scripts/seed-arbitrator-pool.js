@@ -13,6 +13,48 @@ const path = require('path');
 const USDC = (n) => BigInt(n) * 1_000_000n;
 const STAKE = USDC(50);
 const TARGET_POOL = 5;
+const ETH_FUND = () => hre.ethers.parseEther('0.00025');
+const ETH_FUND_MIN = () => hre.ethers.parseEther('0.00012');
+
+async function collectCandidateWallets(panel, needed) {
+  const candidates = [];
+  const reuse = await loadReuseWallets();
+  for (const wallet of reuse) {
+    if (!(await panel.isInPool(wallet.address))) {
+      candidates.push(wallet);
+      if (candidates.length >= needed) return candidates;
+    }
+  }
+  while (candidates.length < needed) {
+    const [wallet] = await deriveArbitratorWallets(1);
+    if (!(await panel.isInPool(wallet.address))) {
+      candidates.push(wallet);
+    }
+  }
+  return candidates;
+}
+
+async function loadReuseWallets() {
+  const reusePath = path.join(__dirname, '..', 'deployments', 'sepolia-arbitrators.json');
+  if (!fs.existsSync(reusePath)) return [];
+
+  try {
+    const prev = JSON.parse(fs.readFileSync(reusePath, 'utf8'));
+    const wallets = [];
+    for (const entry of prev.arbitrators || []) {
+      if (!entry.privateKey || entry.status === 'already_in_pool') continue;
+      const wallet = new hre.ethers.Wallet(entry.privateKey, hre.ethers.provider);
+      const code = await hre.ethers.provider.getCode(wallet.address);
+      if (code === '0x') wallets.push(wallet);
+    }
+    if (wallets.length > 0) {
+      console.log(`Reusing ${wallets.length} arbitrator wallet(s) from sepolia-arbitrators.json`);
+    }
+    return wallets;
+  } catch {
+    return [];
+  }
+}
 
 async function deriveArbitratorWallets(count) {
   const wallets = [];
@@ -48,7 +90,7 @@ async function main() {
   }
 
   const needed = TARGET_POOL - poolSizeBefore;
-  const wallets = await deriveArbitratorWallets(needed);
+  const wallets = await collectCandidateWallets(panel, needed);
   const out = {
     network: 'sepolia',
     seededAt: new Date().toISOString(),
@@ -77,16 +119,16 @@ async function main() {
       const treasuryArb = treasury.connect(arbSigner);
 
       const bal = await hre.ethers.provider.getBalance(addr);
-      if (bal < hre.ethers.parseEther('0.0003')) {
+      if (bal < ETH_FUND_MIN()) {
         const fundTx = await deployer.sendTransaction({
           to: addr,
-          value: hre.ethers.parseEther('0.001'),
+          value: ETH_FUND(),
         });
         const fundRcpt = await fundTx.wait(2);
         if (!fundRcpt) throw new Error(`ETH fund failed for ${addr}`);
         const balAfter = await hre.ethers.provider.getBalance(addr);
         console.log(`Funded ${addr} — balance ${hre.ethers.formatEther(balAfter)} ETH`);
-        if (balAfter < hre.ethers.parseEther('0.0002')) {
+        if (balAfter < ETH_FUND_MIN()) {
           throw new Error(`Insufficient ETH on ${addr} after fund`);
         }
       }
@@ -100,7 +142,20 @@ async function main() {
     }
 
     console.log(`joinPool ${addr}...`);
-    const joinTx = await panel.joinPool(addr);
+    const panelForJoin = panel;
+    let joinTx;
+    try {
+      joinTx = await panelForJoin.joinPool(addr);
+    } catch (err) {
+      const msg = String(err?.message || err);
+      if (msg.includes('insufficient funds') || msg.includes('OutOfFunds')) {
+        console.log(`Deployer low on ETH — ${addr} self-joins pool...`);
+        const panelArb = panel.connect(arbSigner);
+        joinTx = await panelArb.joinPool(addr);
+      } else {
+        throw err;
+      }
+    }
     await joinTx.wait(2);
     console.log(`joinPool OK: ${addr}`);
 
