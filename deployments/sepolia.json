@@ -2,13 +2,14 @@
   "network": "sepolia",
   "chainId": "11155111",
   "deployer": "0x523eBd853a1638065f148A05c0Ca423E490D92f7",
-  "deployedAt": "2026-06-21T19:05:03.146Z",
+  "deployedAt": "2026-06-25T18:11:39.316Z",
+  "disputeTimings": "demo",
   "addresses": {
     "MockUSDC": "0x2293193Eaa5CE5253d5e081046a06dB077f26f8e",
-    "ReputationStore": "0x7A96219812e9363dBdbD43BE14384820E5f9b0DC",
-    "PlatformTreasury": "0x0110BfF85E484b82205833D3950fC7C61714c0e7",
-    "JobRegistry": "0xeF5cc7a22D7Ff9e7FA0c5Fe714F088c98758A549",
-    "ArbitratorPanel": "0x324e7d8Cfe5aBdb62caa236Bb23626E23BC7EC4F",
-    "EscrowVault": "0xf2143d1EA4D5a8716344c2cef862f9ed41244ED5"
+    "ReputationStore": "0x9B0041E95fc236cB296296BE6E4dD6cdFc4eF3Ff",
+    "PlatformTreasury": "0xd752C7C94e6571e9781aB8dAc54c749f33BD09Fe",
+    "JobRegistry": "0xE5425cFE21BAe73d54138Bb290B671bF4c55FBC9",
+    "ArbitratorPanel": "0x96eCEfBd86dF049994fd411689566B126afcd0EB",
+    "EscrowVault": "0xeE67C7bdC2679aa86b6eA4b7311a74B4c8bf6DD3"
   }
 }

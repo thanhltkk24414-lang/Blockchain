@@ -6,11 +6,40 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
+  const network = hre.network.name;
+  if (network === "sepolia") {
+    const timingsPath = path.join(__dirname, "..", "contracts", "DisputeTimings.sol");
+    const timingsSrc = fs.readFileSync(timingsPath, "utf8");
+    if (timingsSrc.includes("30 minutes") && timingsSrc.includes("60 minutes")) {
+      console.log("Dispute timings: DEMO (short windows for live Sepolia demo)");
+    } else {
+      console.warn(
+        "WARNING: DisputeTimings.sol looks like production (120h windows).",
+        "Run: node scripts/prepare-dispute-timings.js demo"
+      );
+    }
+  }
+
   const balance = await hre.ethers.provider.getBalance(deployer.address);
   console.log("Account balance:", hre.ethers.formatEther(balance), "ETH");
 
-  const network = hre.network.name;
   let usdcAddress = process.env.USDC_ADDRESS;
+
+  // Reuse existing MockUSDC on Sepolia redeploys so demo wallets keep balances.
+  if (!usdcAddress && network === "sepolia") {
+    const sepoliaPath = path.join(__dirname, "..", "deployments", "sepolia.json");
+    if (fs.existsSync(sepoliaPath)) {
+      try {
+        const prev = JSON.parse(fs.readFileSync(sepoliaPath, "utf8"));
+        if (prev.addresses?.MockUSDC) {
+          usdcAddress = prev.addresses.MockUSDC;
+          console.log("Reusing MockUSDC from prior sepolia.json:", usdcAddress);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 
   if (!usdcAddress) {
     console.log("USDC_ADDRESS not set — deploying MockUSDC...");
@@ -96,6 +125,20 @@ async function main() {
   const outFile = path.join(outDir, `${network}.json`);
   fs.writeFileSync(outFile, JSON.stringify(deployment, null, 2));
   console.log("Deployment saved to", outFile);
+
+  if (network === "sepolia") {
+    const frontendFile = path.join(
+      __dirname,
+      "..",
+      "frontend",
+      "src",
+      "lib",
+      "contracts",
+      "deployments-sepolia.json"
+    );
+    fs.writeFileSync(frontendFile, JSON.stringify(deployment, null, 2));
+    console.log("Synced frontend deployments ->", path.relative(path.join(__dirname, ".."), frontendFile));
+  }
 
   return deployment;
 }

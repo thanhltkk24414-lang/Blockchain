@@ -11,3 +11,4 @@ build/
 .DS_Store
 Thumbs.db
 *.log
+deployments/sepolia-arbitrators.json
