@@ -1,7 +1,7 @@
 {
   "name": "fapex",
   "description": "Fapex — Web3 Freelance Platform (Hardhat contracts monorepo root)",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "private": true,
   "scripts": {
     "compile": "hardhat compile",
