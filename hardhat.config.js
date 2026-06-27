@@ -1,5 +1,6 @@
 require("@nomicfoundation/hardhat-toolbox");
 const path = require("path");
+const { task } = require("hardhat/config");
 
 // Prefer contracts/.env (project convention), fall back to root .env
 require("dotenv").config({ path: path.join(__dirname, "contracts", ".env") });
@@ -35,3 +36,14 @@ module.exports = {
     apiKey: ETHERSCAN_API_KEY || "",
   },
 };
+
+/** After every `hardhat compile`, sync ABIs to backend + frontend (SC-6). */
+task("compile").setAction(async (args, hre, runSuper) => {
+  const result = await runSuper();
+  if (process.env.SKIP_ABI_EXPORT === "1") {
+    return result;
+  }
+  const { main: exportAbis } = require("./scripts/export-abis");
+  exportAbis();
+  return result;
+});

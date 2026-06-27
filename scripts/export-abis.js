@@ -33,10 +33,15 @@ const CONTRACTS = [
 ];
 
 const root = path.join(__dirname, "..");
-const outDir = path.join(root, "backend", "src", "abi");
+const outDirs = [
+  path.join(root, "backend", "src", "abi"),
+  path.join(root, "frontend", "src", "lib", "contracts", "abis"),
+];
 
 function main() {
-  fs.mkdirSync(outDir, { recursive: true });
+  for (const outDir of outDirs) {
+    fs.mkdirSync(outDir, { recursive: true });
+  }
 
   let exported = 0;
   for (const { name, artifact } of CONTRACTS) {
@@ -55,13 +60,27 @@ function main() {
       return;
     }
 
-    const outFile = path.join(outDir, `${name}.json`);
-    fs.writeFileSync(outFile, JSON.stringify(abi, null, 2));
-    console.log(`Exported ${name}: ${abi.length} entries -> ${path.relative(root, outFile)}`);
+    const abiJson = JSON.stringify(abi, null, 2);
+    for (const outDir of outDirs) {
+      const outFile = path.join(outDir, `${name}.json`);
+      fs.writeFileSync(outFile, abiJson);
+      console.log(`Exported ${name}: ${abi.length} entries -> ${path.relative(root, outFile)}`);
+    }
     exported++;
   }
 
-  console.log(`Done. Exported ${exported} ABI file(s) to backend/src/abi/`);
+  const deploySrc = path.join(root, "deployments", "sepolia.json");
+  const deployDest = path.join(root, "frontend", "src", "lib", "contracts", "deployments-sepolia.json");
+  if (fs.existsSync(deploySrc)) {
+    fs.copyFileSync(deploySrc, deployDest);
+    console.log(`Copied deployments/sepolia.json -> ${path.relative(root, deployDest)}`);
+  }
+
+  console.log(`Done. Exported ${exported} ABI file(s) to backend + frontend.`);
 }
 
-main();
+module.exports = { main };
+
+if (require.main === module) {
+  main();
+}
