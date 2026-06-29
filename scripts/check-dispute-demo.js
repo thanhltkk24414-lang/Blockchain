@@ -32,6 +32,11 @@ async function main() {
 
   const poolSize = Number(await panel.poolSize());
   console.log('ArbitratorPanel.poolSize:', poolSize);
+  if (poolSize < 5) {
+    console.warn('WARN: poolSize < 5 — raiseDispute will revert NotEnoughArbitrators');
+  } else if (poolSize < 10) {
+    console.warn('WARN: poolSize < 10 — fileAppeal / round 2 may revert NotEnoughArbitrators');
+  }
 
   const raw = await registry.getJob(JOB_ID);
   console.log(`\nJob #${JOB_ID}:`);
