@@ -12,7 +12,7 @@ const path = require('path');
 
 const USDC = (n) => BigInt(n) * 1_000_000n;
 const STAKE = USDC(50);
-const TARGET_POOL = 5;
+const TARGET_POOL = 10; // round 1 needs 5; appeal round 2 needs 5 more (excludes round-1 panel)
 const ETH_FUND = () => hre.ethers.parseEther('0.00025');
 const ETH_FUND_MIN = () => hre.ethers.parseEther('0.00012');
 
