@@ -1,7 +1,7 @@
 /**
  * Self-join arbitrators that are staked but not yet in pool (deployer out of Sepolia ETH).
  * Reads private keys from deployments/sepolia-arbitrators.json (gitignored).
- */
+ **/
 const hre = require('hardhat');
 const fs = require('fs');
 const path = require('path');
