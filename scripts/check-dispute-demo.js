@@ -1,7 +1,7 @@
-/**
+/******
  * Read Sepolia on-chain state for dispute demo (pool + job status).
  * Usage: node scripts/check-dispute-demo.js [jobId]
- */
+**** */
 const { ethers } = require('ethers');
 const path = require('path');
 const fs = require('fs');
